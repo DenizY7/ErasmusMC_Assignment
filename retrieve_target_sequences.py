@@ -1,3 +1,4 @@
+import argparse
 import pandas as pd
 import pickle
 
@@ -6,37 +7,37 @@ from Bio.Seq import Seq
 from Bio.SeqRecord import SeqRecord
 
 
-def main():
+def main(args):
 	# Get the list of primers
-	primers_df = get_primers()
+	primers_df = get_primers(args.primers)
 
 	# Set the max target seq length (1000bp)
-	seq_len = 1000
+	seq_len = args.seq_length
 
-	# Retrieve possible target sequences from the reference genome
-	# found_sequences = get_list_found_seqs(primers_df, seq_len)
+	#Retrieve possible target sequences from the reference genome
+	found_sequences = get_list_found_seqs(primers_df, seq_len, args.reference_genome)
 
 	# # Save the found sequences into file
 	# with open("Output\\found_seqs.pickle", "wb") as handle:
 	#     pickle.dump(found_sequences, handle)
 
-	# Load found sequences
-	with open("Output\\found_seqs.pickle", 'rb') as handle:
-		found_sequences = pickle.load(handle)
+	# # Load found sequences
+	# with open("Output\\found_seqs.pickle", 'rb') as handle:
+	# 	found_sequences = pickle.load(handle)
 
 	# Extract the amplicons from the possible target sequences found in the genome
 	found_amplicons = extract_amplicon_sequence(primers_df, found_sequences)
 
 	# Generate amplicon report as dataframe & save to file
-	all_amplicons = generate_amplicon_records(found_amplicons)
+	all_amplicons = generate_amplicon_records(found_amplicons, args.output)
 	# Create fasta file of the found amplicons & save to file
-	generate_targetSeq_fasta(all_amplicons)
+	generate_targetSeq_fasta(all_amplicons, args.output)
 
 
 	
-def get_primers():
+def get_primers(path):
 	# Load the primers file as dataframe
-	primers_df = pd.read_csv("Data\\Primers.txt", sep="\t", names=["number", "primer"])
+	primers_df = pd.read_csv(path, sep="\t", names=["number", "primer"])
 	# Get the reverse complement primer sequences, named as compl_primer
 	primers_df['compl_primer'] = primers_df.apply(lambda x: get_revcompl_seq(x.primer), axis=1)
 
@@ -66,21 +67,22 @@ def get_revcompl_seq(primer_seq):
 	return rev_compl_seq
 
 
-def get_list_found_seqs(primers_df, seq_len):
+def get_list_found_seqs(primers_df, seq_len, reference_genome_path):
 	# Retrieve possible target sequences from the Reference Genome
 	# Search only in one direction (forward primer + 1000bp), reverse primers will be search in these possible target sequences
 
 	found_sequences = {}
 	
 	for idx, primer, compl_primer in primers_df.values:
-		found_sequences[idx] = extract_sequences(primer, seq_len)
+		found_sequences[idx] = extract_sequences(primer, seq_len, reference_genome_path)
 
 	return found_sequences
 
 
-def extract_sequences(primer, seq_len):
+def extract_sequences(primer, seq_len, reference_genome_path):
 	# Function to search reference genome for primer(s) and extract possible target sequences
-
+	print(f"Extracting sequences for the primer: {primer}")
+	
 	# Create empty list to store genomic location and sequence for possible target sequence
 	possible_sequences = []
 	
@@ -93,7 +95,7 @@ def extract_sequences(primer, seq_len):
 		target_primers = [primer.replace("R", "A"), primer.replace("R", "G")]
 
 	# Searh each chromosome for the primer(s)
-	for record in SeqIO.parse("Data\\GRCh38.p13.genome.fa", "fasta"):
+	for record in SeqIO.parse(reference_genome_path, "fasta"):
 		for target_primer in target_primers:
 			i = str(record.seq).find(target_primer)
 
@@ -133,18 +135,18 @@ def extract_amplicon_sequence(primers_df, found_sequences):
 	return found_amplicons
 
 
-def generate_amplicon_records(found_amplicons):
+def generate_amplicon_records(found_amplicons, output_path):
 	# Put the found amplicons into dataframe & save to file
 	all_amplicons = pd.DataFrame(found_amplicons,
 		columns = ["chromosome", "start", "primer_number", "forward_primer", "reverse_primer", "amplicon_sequence", "amplicon_length", "target_sequence"])
 
 	# Save to file
-	all_amplicons.to_csv("Output\\all_amplicons.csv")
+	all_amplicons.to_csv(f"{output_path}/all_amplicons.csv")
 
 	return all_amplicons
 
 
-def generate_targetSeq_fasta(all_amplicons):
+def generate_targetSeq_fasta(all_amplicons, output_path):
 	# Convert the found sequences into fasta format
 
 	# create list to store SeqRecord objects for fasta file
@@ -160,8 +162,16 @@ def generate_targetSeq_fasta(all_amplicons):
 		sequences.append(record)
 
 	# Write the target sequence record into fasta file
-	SeqIO.write(sequences, "Output\\target_sequences.fasta", "fasta")
+	SeqIO.write(sequences, f"{output_path}/target_sequences.fasta", "fasta")
 
 
 if __name__ == '__main__':
-	main()
+
+	parser = argparse.ArgumentParser(description = 'Retrieve target sequences')
+	parser.add_argument('-r','--reference_genome', required=True, help='path to the reference genome fasta file location')
+	parser.add_argument('-p','--primers', help='path to the list of primers', default="Data/Primers.txt")
+	parser.add_argument('-l', '--seq_length', help='maximum length for amplicon', default=1000)
+	parser.add_argument('-o', '--output', help='path to the output folder', default="Output")
+	args = parser.parse_args()
+	
+	main(args)
