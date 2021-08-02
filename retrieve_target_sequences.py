@@ -18,11 +18,11 @@ def main(args):
 	found_sequences = get_list_found_seqs(primers_df, seq_len, args.reference_genome)
 
 	# # Save the found sequences into file
-	# with open("Output\\found_seqs.pickle", "wb") as handle:
+	# with open(f"{args.output}/found_seqs.pickle", "wb") as handle:
 	#     pickle.dump(found_sequences, handle)
 
 	# # Load found sequences
-	# with open("Output\\found_seqs.pickle", 'rb') as handle:
+	# with open(f"{args.output}/found_seqs.pickle", 'rb') as handle:
 	# 	found_sequences = pickle.load(handle)
 
 	# Extract the amplicons from the possible target sequences found in the genome
@@ -32,7 +32,6 @@ def main(args):
 	all_amplicons = generate_amplicon_records(found_amplicons, args.output)
 	# Create fasta file of the found amplicons & save to file
 	generate_targetSeq_fasta(all_amplicons, args.output)
-
 
 	
 def get_primers(path):

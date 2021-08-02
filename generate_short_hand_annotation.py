@@ -124,7 +124,7 @@ def generate_STR_records(target_str_sequences, output_path):
 
 if __name__ == '__main__':
 
-	parser = argparse.ArgumentParser(description = 'Retrieve target sequences')
+	parser = argparse.ArgumentParser(description = 'Retrieve short-hand annotations')
 	parser.add_argument('-f','--fasta_file', help='path to the fasta file location', default="Output/target_sequences.fasta")
 	parser.add_argument('-m','--motifs', help='path to the list of STR motifs', default="Data/Motifs.txt")
 	parser.add_argument('-o', '--output', help='path to the output folder', default="Output")
